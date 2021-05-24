@@ -1,0 +1,37 @@
+version: '2.1'
+
+services:
+  postgres:
+    image: postgres:10-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=aurora_serverless_flyway_db_local
+    ports:
+      - 5432:5432
+    volumes:
+      - "./data:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-U", "postgres"]
+      interval: 5s
+      timeout: 1s
+      retries: 10
+
+  flyway:
+    image: flyway/flyway:7-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - "./sql:/flyway/sql"
+    command: [
+      "-url=jdbc:postgresql://host.docker.internal:5432/aurora_serverless_flyway_db_local",
+      "-user=postgres",
+      "-password=password",
+      "-locations=filesystem:./sql",
+      "-placeholders.DATABASE_NAME=aurora_serverless_flyway_db_local",
+      "-placeholders.READ_ONLY_PASSWORD=password",
+      "-placeholders.SAMPLE_APPLICATION_PASSWORD=password",
+      "migrate"
+    ]
